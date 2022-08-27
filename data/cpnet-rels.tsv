@@ -1,0 +1,32 @@
+source	target	text	reversed	symmetric	keep
+antonym	antonym	is the antonym of	FALSE	TRUE	TRUE
+distinctfrom	antonym	is the antonym of	FALSE	TRUE	TRUE
+atlocation	atlocation	is at location of	FALSE	FALSE	TRUE
+locatednear	atlocation	is at location of	FALSE	FALSE	TRUE
+capableof	capableof	is capable of	FALSE	FALSE	TRUE
+causes	causes	causes	FALSE	FALSE	TRUE
+causesdesire	causes	causes	FALSE	FALSE	TRUE
+motivatedbygoal	causes	causes	TRUE	FALSE	TRUE
+createdby	createdby	is created by	FALSE	FALSE	TRUE
+isa	isa	is a kind of	FALSE	FALSE	TRUE
+instanceof	isa	is a kind of	FALSE	FALSE	TRUE
+definedas	isa	is a kind of	FALSE	FALSE	TRUE
+desires	desires	desires	FALSE	FALSE	TRUE
+hassubevent	hassubevent	has subevent	FALSE	FALSE	TRUE
+hasfirstsubevent	hassubevent	has subevent	FALSE	FALSE	TRUE
+haslastsubevent	hassubevent	has subevent	FALSE	FALSE	TRUE
+hasprerequisite	hassubevent	has subevent	FALSE	FALSE	TRUE
+entails	hassubevent	has subevent	FALSE	FALSE	TRUE
+mannerof	hassubevent	has subevent	FALSE	FALSE	TRUE
+partof	partof	is part of	FALSE	FALSE	TRUE
+hasa	partof	is part of	TRUE	FALSE	TRUE
+hascontext	hascontext	has context	FALSE	FALSE	FALSE
+hasproperty	hasproperty	has property	FALSE	FALSE	TRUE
+madeof	madeof	is made of	FALSE	FALSE	TRUE
+notcapableof	notcapableof	is not capable of	FALSE	FALSE	TRUE
+notdesires	notdesires	does not desires	FALSE	FALSE	TRUE
+receivesaction	receivesaction	is	FALSE	FALSE	TRUE
+relatedto	relatedto	is related to	FALSE	TRUE	TRUE
+similarto	relatedto	is related to	FALSE	TRUE	TRUE
+synonym	relatedto	is related to	FALSE	TRUE	TRUE
+usedfor	usedfor	is used for	FALSE	FALSE	TRUE

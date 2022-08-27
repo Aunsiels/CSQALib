@@ -1,0 +1,14 @@
+spacy
+nltk
+wandb
+tqdm
+networkx
+torch
+numpy
+pandas
+gensim
+transformers
+datasets
+torch-geometric
+torch-scatter
+torch-sparse
