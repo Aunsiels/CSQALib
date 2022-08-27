@@ -66,7 +66,6 @@ def train(
     rels = load_rels(kb_name)
     embedder = load_embedder(emb_name)
     train_rec, test_rec = load_qa(qa_task)
-    logging.info('123')
     print('loaded %.2fs' % (time() - t0))
 
     graph, idx2rel = build_graph_relidx(edges, rels)
@@ -85,11 +84,10 @@ def train(
             pd.DataFrame.from_records(records)
             .explode("choices")
             .rename({"choices": "answer"}, axis=1)
-            .to_records()
         )
         graph = [extract_graph(x.question, x.answer, matcher, graph,
                                ranker, embedder, top_k) for x in df.itertuples()]
-        text = HFDataset.from_pandas(graph)
+        text = HFDataset.from_pandas(df)
 
         dataset = BatchDataset(ZipDataset([text, graph]), num_choices)
         collator = BatchCollator(ZipCollator(
@@ -128,7 +126,7 @@ def train(
             optimizer.step()
 
             wandb.log({"train/loss": loss.item()})
-            
+
         with torch.no_grad():
             correct = 0
             for text, graph in test_dataloader:
