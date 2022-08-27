@@ -24,7 +24,7 @@ def extract_graph(question: str, answer: str, matcher: Matcher, graph: nx.MultiD
     subgraph1 = get_2_hops_subgraph(graph, qcids, acids)
     cids1 = list(subgraph1.nodes)
     boost = [cid in qcids or cid in acids for cid in cids1]
-    scores = ranker(cids1) + 2 * np.array(boost)
+    scores = ranker(question, cids1) + 2 * np.array(boost)
 
     cids2 = get_top_k(cids1, scores, top_k)
     subgraph2 = subgraph1.subgraph(cids2)

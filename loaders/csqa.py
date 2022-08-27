@@ -6,7 +6,7 @@ def load_csqa(path):
         x = sample["question"]
         return {
             "question": x["stem"],
-            "choices": x["choices"],
+            "choices": [choice["text"] for choice in x["choices"]],
             "label": ord(sample["answerKey"]) - ord("A"),
         }
 
