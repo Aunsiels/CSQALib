@@ -85,11 +85,11 @@ def train(
             .explode("choices")
             .rename({"choices": "answer"}, axis=1)
         )
-        graph = [extract_graph(x.question, x.answer, matcher, graph,
+        graphs = [extract_graph(x.question, x.answer, matcher, graph,
                                ranker, embedder, top_k) for x in df.itertuples()]
         text = HFDataset.from_pandas(df)
 
-        dataset = BatchDataset(ZipDataset([text, graph]), num_choices)
+        dataset = BatchDataset(ZipDataset([text, graphs]), num_choices)
         collator = BatchCollator(ZipCollator(
             [TextCollator(tokenizer), GraphCollator]))
         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
