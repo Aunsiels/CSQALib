@@ -6,6 +6,7 @@ from time import time
 import pandas as pd
 import wandb
 
+import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.optim import AdamW
@@ -116,6 +117,7 @@ def train(
     print('start training %.2fs' % (time() - t0))
 
     for epoch in range(epochs):
+        wandb.log({"epoch": epoch})
         for text, graph in train_dataloader:
             logits = model(text, graph)
             labels = text['labels'][::num_choices]  # unbatching
@@ -125,7 +127,17 @@ def train(
             loss.backward()
             optimizer.step()
 
-            wandb.log({"loss": loss.item()})
+            wandb.log({"train/loss": loss.item()})
+            
+        with torch.no_grad():
+            correct = 0
+            for text, graph in test_dataloader:
+                logits = model(text, graph)
+                labels = text['labels'][::num_choices]  # unbatching
+                answer = logits.view(-1, 5).argmax(1)
+                correct += (answer == labels).sum().item()
+            wandb.log({"validation/accuracy": correct / len(test_dataloader.dataset)})
+        
 
 if __name__ == "__main__":
     cfg = {}
