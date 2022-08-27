@@ -26,7 +26,7 @@ def add_ctx_qagnn(graph: Graph, num_rels, ctx_node_emb):
         + [[q, 0, irq] for q in qnodes]
         + [[a, 0, ira] for a in anodes],
         dtype=torch.long,
-    ).t()
+    ).view(-1,3).t()
 
     edge_index = torch.cat((new_edges[:2], graph.edge_index+1), 1)
     edge_type = torch.cat((new_edges[2], graph.edge_type), 0)

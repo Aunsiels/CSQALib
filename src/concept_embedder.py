@@ -37,7 +37,7 @@ class GloVe_Embedder(Embedder):
         self._dim = some_vec.shape[0]
 
     def embed_one(self, cid):
-        np.mean([
+        return np.mean([
             self.wv[w]
             if w in self.wv else
             self.oov
@@ -45,7 +45,9 @@ class GloVe_Embedder(Embedder):
         ], axis=0)
 
     def __call__(self, cids) -> np.array:
-        return np.stack(self.embed_one(cid) for cid in cids)
+        if len(cids) == 0:
+            return np.zeros((0, self.dim))
+        return np.stack([self.embed_one(cid) for cid in cids])
 
 
 class LM_Embedder(Embedder):
@@ -53,6 +55,7 @@ class LM_Embedder(Embedder):
         self.device = device = "cuda" if torch.cuda.is_available() else "cpu"
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name).to(device)
+        self._dim = self.model.config.hidden_size
 
     def __call__(self, cids) -> torch.Tensor:
         concepts = [cid.replace("_", " ") for cid in cids]

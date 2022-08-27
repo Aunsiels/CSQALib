@@ -10,6 +10,7 @@ python -c 'import nltk; nltk.download("stopwords")'
 import spacy
 from spacy.matcher import PhraseMatcher
 import nltk
+from tqdm import tqdm
 
 
 NLTK_STOPWORDS = set(nltk.corpus.stopwords.words('english'))
@@ -40,7 +41,7 @@ class Matcher:
         self.matcher = matcher = PhraseMatcher(nlp.vocab, "LEMMA")
         concept_spans = [cid.replace('_', ' ') for cid in concept_ids]
 
-        for cid, doc in zip(concept_ids, nlp.pipe(concept_spans)):
+        for cid, doc in tqdm(zip(concept_ids, nlp.pipe(concept_spans)), desc="matcher", total=len(concept_ids)):
             if is_pattern_ok(doc):
                 matcher.add(cid, [doc])
 

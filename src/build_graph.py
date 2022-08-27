@@ -1,6 +1,7 @@
 from typing import List, Tuple
 import pandas as pd
 import networkx as nx
+from tqdm import tqdm
 
 from loaders.common import DF_EDGES_COLS, DF_RELS_COLS
 
@@ -34,7 +35,7 @@ def build_graph_relidx(edges: pd.DataFrame, relations: pd.DataFrame) -> Tuple[nx
     rel_idx = {}
 
     graph = nx.MultiDiGraph()
-    for row in edges.itertuples():
+    for row in tqdm(edges.itertuples(), desc="build graph", total=len(edges)):
         if row.Type in relmap and row.Head not in NODES_BLACKLIST and row.Tail not in NODES_BLACKLIST:
             for Rel, head, tail, Weight in get_fwd_bwd(row, relmap):
                 if Rel not in rel_idx:
@@ -48,7 +49,7 @@ def build_graph(edges: pd.DataFrame, relations: pd.DataFrame) -> nx.MultiDiGraph
     relmap = build_relmap(relations)
 
     graph = nx.MultiDiGraph()
-    for row in edges.itertuples():
+    for row in tqdm(edges.itertuples(), desc="build graph", total=len(edges)):
         if row.Type in relmap and row.Head not in NODES_BLACKLIST and row.Tail not in NODES_BLACKLIST:
             for Rel, head, tail, Weight in get_fwd_bwd(row, relmap):
                 graph.add_edge(head, tail, Rel=Rel, Weight=Weight)

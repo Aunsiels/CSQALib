@@ -17,9 +17,11 @@ class Ranker:
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name).to(device)
 
-    def __call__(self, context, concept_ids) -> float:
+    def __call__(self, context, concept_ids) -> np.array:
         # return an array of scores
         # shape: (len(concept_ids),)
+        if len(concept_ids) == 0:
+            return np.array([])
         concept_spans = [cid.replace('_', ' ') for cid in concept_ids]
 
         input = [context, *concept_spans]
@@ -29,7 +31,7 @@ class Ranker:
         with torch.no_grad():
             model_output = self.model(**encoded_input)
         sentence_embeddings = mean_pooling(
-            model_output, encoded_input['attention_mask'])
+            model_output, encoded_input['attention_mask']).cpu()
 
         scores = cosine_similarity(
             sentence_embeddings[0:1], sentence_embeddings[1:])
@@ -37,5 +39,5 @@ class Ranker:
 
 
 def get_top_k(X, scores, k):
-    ranking = np.argsort(scores)[::-1]
-    return [X[i] for i in ranking[k]]
+    ranking = np.argsort(-scores)
+    return [X[i] for i in ranking[:k]]
