@@ -17,7 +17,7 @@ cpnet_en.csv:
 
 	wget https://s3.amazonaws.com/conceptnet/downloads/2019/edges/conceptnet-assertions-5.7.0.csv.gz
 	gunzip conceptnet-assertions-5.7.0.csv.gz
-	cat conceptnet-assertions-5.7.0.csv | awk '$$3 ~ "^/c/en/" && $$4 ~ "^/c/en/"' > cpent_en.csv
+	cat conceptnet-assertions-5.7.0.csv | awk '$$3 ~ "^/c/en/" && $$4 ~ "^/c/en/"' > cpnet_en.csv
 
 quasimodo_positive_top.tsv:
 	wget -O quasimodo_positive_top.tsv https://nextcloud.mpi-klsb.mpg.de/index.php/s/Sioq6rKP8LmjMDQ/download?path=%2FLatest%2fquasimodo_positive_top.tsv
