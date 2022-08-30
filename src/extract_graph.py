@@ -35,11 +35,12 @@ def extract_graph(question: str, answer: str, matcher: Matcher, graph: nx.MultiD
 def as_data(cids, graph: nx.MultiDiGraph, qcids, acids, embeddings: np.array):
     cid_to_id2 = {cid: i for i, cid in enumerate(cids)}
     return Data(
-        node_emb=torch.Tensor(embeddings),
-        node_type=torch.Tensor(
-            [0 if cid in acids else 1 if cid in qcids else 2 for cid in cids]),
-        edge_index=torch.Tensor([[cid_to_id2[u], cid_to_id2[v]]
-                                 for u, v, k in graph.edges]).T,
-        edge_type=torch.Tensor([graph.get_edge_data(u, v, k)["Rel"]
-                                for u, v, k in graph.edges])
+        node_emb=torch.tensor(embeddings, dtype=torch.float32),
+        node_type=torch.tensor(
+            [0 if cid in acids else 1 if cid in qcids else 2 for cid in cids],
+            dtype=torch.long),
+        edge_index=torch.tensor([[cid_to_id2[u], cid_to_id2[v]]
+                                 for u, v, k in graph.edges], dtype=torch.long).T,
+        edge_type=torch.tensor([graph.get_edge_data(u, v, k)["Rel"]
+                                for u, v, k in graph.edges], dtype=torch.long)
     )

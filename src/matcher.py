@@ -37,7 +37,9 @@ def is_pattern_ok(doc):
 
 class Matcher:
     def __init__(self, concept_ids):
-        self.nlp = nlp = spacy.load('en_core_web_sm')
+        self.nlp = nlp = spacy.load('en_core_web_sm', disable=[
+                                    'ner', 'parser', 'textcat'])
+        nlp.add_pipe('sentencizer')
         self.matcher = matcher = PhraseMatcher(nlp.vocab, "LEMMA")
         concept_spans = [cid.replace('_', ' ') for cid in concept_ids]
 

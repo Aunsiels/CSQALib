@@ -1,9 +1,10 @@
 import pandas as pd
 
-from loaders.quasimodo import load_quasimodo
-from loaders.ascent import load_ascent
-from loaders.cpnet import load_cpnet
-from loaders.csqa import load_csqa
+from .quasimodo import load_quasimodo
+from .ascent import load_ascent
+from .cpnet import load_cpnet
+from .csqa import load_csqa
+from .obqa import load_obqa
 
 from src.concept_embedder import Embedder, LM_Embedder, GloVe_Embedder
 
@@ -33,6 +34,7 @@ def load_embedder(emb_name) -> Embedder:
     if "sentence-transformers" in emb_name:
         return LM_Embedder(emb_name)
     # TODO TransE
+    raise NotImplementedError
 
 
 def load_qa(qa_task):
@@ -40,4 +42,8 @@ def load_qa(qa_task):
         train = load_csqa(f"{DATA_DIR}/csqa/train_rand_split.jsonl")
         test = load_csqa(f"{DATA_DIR}/csqa/dev_rand_split.jsonl")
         return train, test
-
+    if qa_task == "obqa":
+        train = load_obqa(f"{DATA_DIR}/obqa/train.jsonl")
+        test = load_obqa(f"{DATA_DIR}/obqa/dev.jsonl")
+        return train, test
+    raise NotImplementedError
