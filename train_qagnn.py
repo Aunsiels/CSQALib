@@ -1,4 +1,6 @@
+from datetime import datetime
 import json
+import shelve
 import sys
 from tqdm import tqdm
 
@@ -43,6 +45,73 @@ def load_gnn(gnn_name, lm_dim, hid_dim, num_rels, num_hops):
     raise NotImplementedError
 
 
+def get_cached(key, func, maxsize=10):
+    if not isinstance(key, str):
+        key = str(key)  # simple suboptimal
+    with shelve.open("data/shelve") as db:
+        ts = datetime.now().isoformat()
+        if "_access" not in db:
+            db["_access"] = {}
+        access_logs = db["_access"]
+        access_logs[key] = ts
+
+        by_decr_time = sorted(
+            [(ts1, key1) for key1, ts1 in access_logs.items()], reverse=True)
+        for ts1, key1 in by_decr_time[maxsize:]:
+            if key1 in db:
+                del key1
+
+        db["_access"] = access_logs
+
+        if key in db:
+            return db[key]
+        db[key] = func()
+
+
+def load_dataset(
+    kb_name,
+    emb_name,
+    qa_task,
+    top_k,
+):
+    edges = load_edges(kb_name)
+    rels = load_rels(kb_name)
+    embedder = load_embedder(emb_name)
+    train_rec, test_rec = load_qa(qa_task)
+
+    knowledge_graph, idx2rel = build_graph_relidx(edges, rels)
+    matcher = Matcher(list(knowledge_graph.nodes))
+    ranker = Ranker()
+
+    num_choices = len(train_rec[0]["choices"])
+    num_rels = len(idx2rel)
+    embed_dim = embedder.dim
+
+    def get_dataset(records):
+        # flattened & graph
+        df = (
+            pd.DataFrame.from_records(records)
+            .explode("choices")
+            .rename({"choices": "answer"}, axis=1)
+        )
+        graphs = [extract_graph(x.question, x.answer, matcher, knowledge_graph,
+                                ranker, embedder, top_k) for x in tqdm(df.itertuples(), desc='dataloader', total=len(df))]
+        text = HFDataset.from_pandas(df)
+
+        dataset = BatchDataset(ZipDataset([text, graphs]), num_choices)
+        return dataset
+
+    train_dataset = get_dataset(train_rec)
+    test_dataset = get_dataset(test_rec)
+    return (
+        num_choices,
+        num_rels,
+        embed_dim,
+        train_dataset,
+        test_dataset,
+    )
+
+
 def train(
     kb_name="cpnet_en",
     emb_name="glove",
@@ -71,45 +140,37 @@ def train(
             num_hops=num_hops,
         ),
     )
-    edges = load_edges(kb_name)
-    rels = load_rels(kb_name)
-    embedder = load_embedder(emb_name)
-    train_rec, test_rec = load_qa(qa_task)
-
-    knowledge_graph, idx2rel = build_graph_relidx(edges, rels)
-    matcher = Matcher(list(knowledge_graph.nodes))
-    ranker = Ranker()
-
-    num_choices = len(train_rec[0]["choices"])
-    num_rels = len(idx2rel)
+    args = (
+        kb_name,
+        emb_name,
+        qa_task,
+        lm_name,
+        batch_size,
+        top_k,
+    )
+    (
+        num_choices,
+        num_rels,
+        embed_dim,
+        train_dataset,
+        test_dataset,
+    ) = get_cached(args, lambda: load_dataset(*args))
 
     tokenizer = AutoTokenizer.from_pretrained(lm_name)
 
-    def get_dataloader(records):
-        # flattened & graph
-        df = (
-            pd.DataFrame.from_records(records)
-            .explode("choices")
-            .rename({"choices": "answer"}, axis=1)
-        )
-        graphs = [extract_graph(x.question, x.answer, matcher, knowledge_graph,
-                                ranker, embedder, top_k) for x in tqdm(df.itertuples(), desc='dataloader', total=len(df))]
-        text = HFDataset.from_pandas(df)
+    collator = BatchCollator(ZipCollator(
+        [TextCollator(tokenizer), GraphCollator]))
 
-        dataset = BatchDataset(ZipDataset([text, graphs]), num_choices)
-        collator = BatchCollator(ZipCollator(
-            [TextCollator(tokenizer), GraphCollator]))
-        dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True,
-                                collate_fn=collator)
-        return dataloader
+    def dataload(dataset): return DataLoader(dataset, batch_size=batch_size, shuffle=True,
+                                             collate_fn=collator)
 
-    train_dataloader = get_dataloader(train_rec)
-    test_dataloader = get_dataloader(test_rec)
+    train_dataloader = dataload(train_dataset)
+    test_dataloader = dataload(test_dataset)
 
     language_model = AutoModel.from_pretrained(lm_name)
     lm_dim = language_model.config.hidden_size
 
-    gnn = load_gnn(gnn_name, lm_dim, embedder.dim, num_rels, num_hops)
+    gnn = load_gnn(gnn_name, lm_dim, embed_dim, num_rels, num_hops)
     model = LM_GNN(language_model, lm_dim, gnn, gnn.hid_dim)
     optimizer = AdamW(model.parameters(), lr=learning_rate)
 
