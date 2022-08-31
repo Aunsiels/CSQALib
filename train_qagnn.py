@@ -124,28 +124,10 @@ def train(
     top_k=100,
     num_hops=3,
 ):
-    wandb.init(
-        project="csqa",
-        entity="mhslr",
-        config=dict(
-            kb_name=kb_name,
-            emb_name=emb_name,
-            qa_task=qa_task,
-            lm_name=lm_name,
-            gnn_name=gnn_name,
-            batch_size=batch_size,
-            epochs=epochs,
-            learning_rate=learning_rate,
-            top_k=top_k,
-            num_hops=num_hops,
-        ),
-    )
     args = (
         kb_name,
         emb_name,
         qa_task,
-        lm_name,
-        batch_size,
         top_k,
     )
     (
@@ -176,6 +158,24 @@ def train(
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     model.to(device)
+
+    wandb.init(
+        project="csqa",
+        entity="mhslr",
+        config=dict(
+            kb_name=kb_name,
+            emb_name=emb_name,
+            qa_task=qa_task,
+            lm_name=lm_name,
+            gnn_name=gnn_name,
+            batch_size=batch_size,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            top_k=top_k,
+            num_hops=num_hops,
+        ),
+    )
+
     for epoch in range(epochs):
         wandb.log({"epoch": epoch})
         for text, graph in train_dataloader:
