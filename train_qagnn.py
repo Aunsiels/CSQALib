@@ -63,9 +63,9 @@ def get_cached(key, func, maxsize=10):
 
         db["_access"] = access_logs
 
-        if key in db:
-            return db[key]
-        db[key] = func()
+        if key not in db:
+            db[key] = func()
+        return db[key]
 
 
 def load_dataset(
