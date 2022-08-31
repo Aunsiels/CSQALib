@@ -1,6 +1,6 @@
 import json
 import sys
-import tqdm
+from tqdm import tqdm
 
 import pandas as pd
 import wandb
@@ -30,11 +30,14 @@ from loaders import (
 
 from modeling.lm_gnn import LM_GNN, EmptyGnn
 from modeling.qagnn import QAGNN
+from modeling.gsc import GraphHardCounter
 
 
 def load_gnn(gnn_name, lm_dim, hid_dim, num_rels, num_hops):
     if gnn_name == "none":
         return EmptyGnn()
+    if gnn_name == "gsc":
+        return GraphHardCounter(num_rels)
     if gnn_name == "qagnn":
         return QAGNN(lm_dim, hid_dim, num_rels, num_hops)
     raise NotImplementedError
@@ -45,7 +48,7 @@ def train(
     emb_name="glove",
     qa_task="csqa",
     lm_name="roberta-large",
-    gnn_name="none",
+    gnn_name="gsc",
     batch_size=16,
     epochs=20,
     learning_rate=5e-5,
