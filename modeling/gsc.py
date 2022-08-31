@@ -20,7 +20,7 @@ class GraphHardCounter(nn.Module):
             edge_enc = torch.tensor(np.array([
                 et[i] * 3*3 + nt[ei[i, 0]] * 3 + nt[ei[i, 1]]
                 for i in range(et.shape[0])
-            ])).to(device)
+            ]), dtype=torch.int).to(device)
             return self.scorer(edge_enc).sum().view(1)
 
         return torch.stack([score(graph) for graph in graphs.to_data_list()])
