@@ -119,7 +119,7 @@ def train(
     lm_name="roberta-large",
     gnn_name="gsc",
     batch_size=16,
-    epochs=20,
+    epochs=100,
     learning_rate=5e-5,
     top_k=100,
     num_hops=3,
