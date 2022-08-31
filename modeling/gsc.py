@@ -21,6 +21,6 @@ class GraphHardCounter(nn.Module):
                 et[i] * 3*3 + nt[ei[i, 0]] * 3 + nt[ei[i, 1]]
                 for i in range(et.shape[0])
             ])).to(device)
-            return self.scorer(edge_enc).sum()
+            return [self.scorer(edge_enc).sum()]
 
         return torch.stack([score(graph) for graph in graphs.to_data_list()])
