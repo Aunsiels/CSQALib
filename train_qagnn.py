@@ -153,7 +153,7 @@ def train(
     lm_dim = language_model.config.hidden_size
 
     gnn = load_gnn(gnn_name, lm_dim, embed_dim, num_rels, num_hops)
-    model = LM_GNN(language_model, lm_dim, gnn, gnn.hid_dim)
+    model = LM_GNN(language_model, lm_dim, gnn, gnn.hidden_size)
     optimizer = AdamW(model.parameters(), lr=learning_rate)
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
