@@ -1,11 +1,10 @@
-from turtle import forward
 from typing import Dict
 import torch
 from torch import nn
 from torch_geometric.data.batch import Batch as Graphs
 
-from transformers import BertModel, BertConfig
-from transformers.modeling_outputs import BaseModelOutput
+from transformers import BertModel
+from transformers.modeling_outputs import BaseModelOutputWithPoolingAndCrossAttentions
 
 
 class GNN(nn.Module):
@@ -41,14 +40,16 @@ class LM_GNN(nn.Module):
         gnn_dim = gnn.hidden_size
 
         self.clf = nn.Sequential(
-            nn.Linear(lm_dim+gnn_dim, 512),
-            nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(512, 1),
+            nn.Linear(lm_dim+gnn_dim, 1),
         )
 
     def forward(self, tokens: Dict[str, torch.Tensor], graphs: Graphs) -> torch.Tensor:
-        output: BaseModelOutput = self.lm(**tokens)
-        lm_context = output.last_hidden_state[:, 0]  # embedding of [CLS] token
+        # https://github.com/huggingface/transformers/blob/b487096b02307cd6e0f132b676cdcc7255fe8e74/src/transformers/models/roberta/modeling_roberta.py#L1262
+        # RobertaForMultipleChoice: pooler_output > dropout > linear
+        output: BaseModelOutputWithPoolingAndCrossAttentions = self.lm(
+            **tokens)
+
+        lm_context = output.pooler_output
         graph_context = self.gnn(graphs, lm_context)
         return self.clf(torch.cat((lm_context, graph_context), 1))
