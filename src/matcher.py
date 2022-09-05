@@ -7,6 +7,7 @@ python -m spacy download en_core_web_sm
 python -c 'import nltk; nltk.download("stopwords")'
 """
 
+from typing import List, Union
 import spacy
 from spacy.matcher import PhraseMatcher
 import nltk
@@ -36,6 +37,12 @@ def is_pattern_ok(doc):
 
 
 class Matcher:
+    """
+    Built from concept ids, where words are separated by '_'
+    matcher.match_one(text) returns a set of concept ids.
+    matcher.match_all([txt]) returns a list of sets of concept ids.
+    """
+
     def __init__(self, concept_ids):
         self.nlp = nlp = spacy.load('en_core_web_sm', disable=[
                                     'ner', 'parser', 'textcat'])
@@ -47,6 +54,10 @@ class Matcher:
             if is_pattern_ok(doc):
                 matcher.add(cid, [doc])
 
-    def __call__(self, text) -> set:
-        """ returns a set of concept_ids """
-        return {self.nlp.vocab[cid].text for cid, _, _ in self.matcher(self.nlp(text))}
+    def match_one(self, text: str) -> set:
+        doc = self.nlp(text)
+        return {self.nlp.vocab[cid].text for cid, _, _ in self.matcher(doc)}
+
+    def match_all(self, corpus: List[str]) -> List[set]:
+        [{self.nlp.vocab[cid].text for cid, _, _ in self.matcher(doc)}
+         for doc in self.nlp.pipe(corpus)]

@@ -14,7 +14,7 @@ from torch.optim import AdamW
 from datasets import Dataset as HFDataset
 from transformers import AutoModel, AutoTokenizer
 
-from src.build_graph import build_graph_relidx
+from src.build_graph import build_graph_with_relation_idx
 from src.extract_graph import extract_graph
 from src.matcher import Matcher
 from src.ranker import Ranker
@@ -32,14 +32,14 @@ from loaders import (
 
 from modeling.lm_gnn import LM_GNN, EmptyGnn
 from modeling.qagnn import QAGNN
-from modeling.gsc import GraphHardCounter
+from modeling.gsc import GraphSoftCounter
 
 
 def load_gnn(gnn_name, lm_dim, hid_dim, num_rels, num_hops):
     if gnn_name == "none":
         return EmptyGnn()
     if gnn_name == "gsc":
-        return GraphHardCounter(num_rels)
+        return GraphSoftCounter(num_rels)
     if gnn_name == "qagnn":
         return QAGNN(lm_dim, hid_dim, num_rels, num_hops)
     raise NotImplementedError
@@ -79,7 +79,7 @@ def load_dataset(
     embedder = load_embedder(emb_name)
     train_rec, test_rec = load_qa(qa_task)
 
-    knowledge_graph, idx2rel = build_graph_relidx(edges, rels)
+    knowledge_graph, idx2rel = build_graph_with_relation_idx(edges, rels)
     matcher = Matcher(list(knowledge_graph.nodes))
     ranker = Ranker()
 
@@ -88,14 +88,18 @@ def load_dataset(
     embed_dim = embedder.dim
 
     def get_dataset(records):
-        # flattened & graph
+        # flattened
         df = (
             pd.DataFrame.from_records(records)
             .explode("choices")
             .rename({"choices": "answer"}, axis=1)
         )
-        graphs = [extract_graph(x.question, x.answer, matcher, knowledge_graph,
-                                ranker, embedder, top_k) for x in tqdm(df.itertuples(), desc='dataloader', total=len(df))]
+        qcids = matcher.match_all(df.question)
+        acids = matcher.match_all(df.answer)
+        qacids = list(zip(qcids, acids))
+
+        graphs = [extract_graph(x.question, x.answer, matcher, knowledge_graph, ranker, embedder, top_k)
+                  for x in tqdm(df.itertuples(), desc='extracting graphs', total=len(df))]
         text = HFDataset.from_pandas(df)
 
         dataset = BatchDataset(ZipDataset([text, graphs]), num_choices)

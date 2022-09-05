@@ -30,7 +30,7 @@ def get_fwd_bwd(row, relmap):
     yield bwd, row.Tail, row.Head, row.Weight
 
 
-def build_graph_relidx(edges: pd.DataFrame, relations: pd.DataFrame) -> Tuple[nx.MultiDiGraph, List[str]]:
+def build_graph_with_relation_idx(edges: pd.DataFrame, relations: pd.DataFrame) -> Tuple[nx.MultiDiGraph, List[str]]:
     relmap = build_relmap(relations)
     rel_idx = {}
 

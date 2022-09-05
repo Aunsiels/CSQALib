@@ -2,14 +2,46 @@
 ranker(context, [concept_ids]) -> [scores]
 Don't forget to delete Ranker after use, to free up GPU mem
 """
-from transformers import AutoTokenizer, AutoModel
+from typing import List
+from transformers import AutoTokenizer, AutoModel, AutoModelForMaskedLM
 from sklearn.metrics.pairwise import cosine_similarity
 import torch
 import numpy as np
 
 from .lm_utils import mean_pooling
 
-class Ranker:
+
+class LMLossRanker:
+    def __init__(self):
+        model_name = "roberta-large"
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModelForMaskedLM.from_pretrained(
+            model_name).to(device).eval()
+        self.cache = {}
+
+    def score_batch(self, pairs) -> List[float]:
+        """
+        paris = [(question, concept_id), ...]
+        computes the score for this batch and adds new pairs to the cache.
+        """
+        as_text = [question + " " + cid.replace('_', ' ')
+                   for (question, cid) in pairs]
+        new_text = list(
+            set(text for text in as_text if text not in self.cache))
+
+        if new_text:
+            tokenized = self.tokenizer(
+                new_text, padding=True, return_tensors="pt")
+            loss = self.model(**tokenized, labels=tokenized['input_ids']).loss
+            for i, text in enumerate(new_text):
+                self.cache[text] = loss[i, 0].item()
+
+        return [self.cache[text] for text in as_text]
+
+
+class CosineSimilarityRanker:
     def __init__(self):
         # sentence-transformers models are better suited for cosine similarity
         model_name = "sentence-transformers/all-MiniLM-L6-v2"

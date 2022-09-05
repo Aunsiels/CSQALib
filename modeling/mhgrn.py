@@ -6,7 +6,6 @@ import torch_geometric.nn as gnn
 import torch.nn.functional as F
 
 
-
 class MHGRN(nn.Module):
     def __init__(
         self,
@@ -63,8 +62,8 @@ class MHGRN(nn.Module):
         edges_for_dfs = [
             list(
                 zip(
-                    edge_index[1][edge_index[0] ==
-                                  src], edge_type[edge_index[0] == src]
+                    edge_index[1][edge_index[0] == src],
+                    edge_type[edge_index[0] == src],
                 )
             )
             for src in range(num_nodes)
@@ -119,7 +118,7 @@ class MHGRN(nn.Module):
             zak = [compute_zak(i, p, s) for p in dfs(self.num_hops-1, i, ())]
             if not zak:
                 continue
-            z,a,k = map(list, zip(*zak))
+            z, a, k = map(list, zip(*zak))
             z = torch.stack(z, axis=0)
             a = torch.tensor(a)
             k = torch.tensor(k, dtype=torch.long)
@@ -127,7 +126,8 @@ class MHGRN(nn.Module):
             z1 = torch.zeros((self.num_hops, self.hid_dim))
             for kk in range(self.num_hops):
                 if (k == kk).any():
-                    z1[kk] = (z[k == kk] * a[k == kk].view(-1,1)).sum(0) / a[k == kk].sum()
+                    z1[kk] = (z[k == kk] * a[k == kk].view(-1, 1)
+                              ).sum(0) / a[k == kk].sum()
             weights = self.lm_z(s.expand(self.num_hops, -1), z1)
             z2[i] = (F.softmax(weights, 0) * z1).sum(axis=0)
         h2 = self.V(torch.cat((lm_context[node_index], z2), 1))

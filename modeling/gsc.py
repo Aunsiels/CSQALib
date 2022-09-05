@@ -1,26 +1,131 @@
+from typing import Union
 import torch
 from torch import nn
-import numpy as np
+from torch_geometric.nn.conv import MessagePassing
+from torch_geometric.data import Data, Batch
+from .mlp import MLP
+from src.tensor_utils import make_one_hot
+
+from transformers.modeling_outputs import BaseModelOutputWithPoolingAndCrossAttentions
+from transformers import BertModel
 
 
-class GraphHardCounter(nn.Module):
-    def __init__(self, num_rels):
+class GSCLayer(MessagePassing):
+    def __init__(self):
+        super().__init__(aggr='add')
+
+    def forward(self, node_emb, edge_index, edge_emb):
+        aggr_out = self.propagate(edge_index, x=(
+            node_emb, node_emb), edge_emb=edge_emb)  # [V, emb_dim]
+        return aggr_out
+
+    def message(self, x_j, edge_attr):
+        return x_j + edge_attr
+
+
+class GSC_Message_Passing(nn.Module):
+    def __init__(
+        self,
+        hops: int,
+        num_nodetypes: int,
+        num_edgetypes: int,
+        hidden_size: int,
+        emb_size: int = 1,
+    ):
         super().__init__()
-        self.hidden_size = 1
-        # 3 node types
-        self.scorer = nn.Embedding(num_rels * 3 * 3, 1)
+        self.num_nodetypes = num_nodetypes
+        self.num_edgetypes = num_edgetypes
+        self.hidden_size = hidden_size
+        self.emb_size = emb_size
 
-    def forward(self, graphs, text):
-        def score(graph):
-            device = graph.node_type.device
-            nt = graph.node_type.detach().cpu().numpy()
-            et = graph.edge_type.detach().cpu().numpy()
-            ei = graph.edge_index.T.detach().cpu().numpy()
+        self.edge_encoder = nn.Sequential(
+            MLP(input_size=num_edgetypes + num_nodetypes * 2,
+                hidden_size=hidden_size,
+                output_size=emb_size,
+                num_layers=1,
+                dropout_rate=0),
+            nn.Sigmoid())
+        self.hops = hops
+        self.gnn_layers = nn.ModuleList([GSCLayer() for _ in range(hops)])
 
-            edge_enc = torch.tensor(np.array([
-                et[i] * 3*3 + nt[ei[i, 0]] * 3 + nt[ei[i, 1]]
-                for i in range(et.shape[0])
-            ]), dtype=torch.int).to(device)
-            return self.scorer(edge_enc).sum().view(1)
+    def get_graph_edge_embedding(
+        self,
+        edge_index: torch.LongTensor,
+        edge_type: torch.LongTensor,
+        node_type: torch.LongTensor,
+    ):
+        # Prepare edge feature
+        edge_vec = make_one_hot(edge_type, self.num_edgetypes)  # [E, 39]
+        head_type = node_type[edge_index[0]]  # [E,] #head=src
+        tail_type = node_type[edge_index[1]]  # [E,] #tail=tgt
+        head_vec = make_one_hot(head_type, self.num_nodetypes)  # [E,4]
+        tail_vec = make_one_hot(tail_type, self.num_nodetypes)  # [E,4]
+        edge_embeddings = self.edge_encoder(
+            torch.cat([edge_vec, head_vec, tail_vec], dim=1))  # [E, emb_size]
+        return edge_embeddings
 
-        return torch.stack([score(graph) for graph in graphs.to_data_list()])
+    def forward(self, graphs: Union[Data, Batch]):
+        device = graphs.node_type.device
+        num_nodes = graphs.node_type.shape[0]
+
+        edge_embeddings = self.get_graph_edge_embedding(
+            graphs.edge_index, graphs.edge_type, graphs.node_type)
+
+        aggr_out = torch.zeros((num_nodes, 1)).to(device)
+        for i in range(self.hops):
+            # propagate and aggregate between nodes and edges
+            aggr_out = self.gnn_layers[i](
+                aggr_out, graphs.edge_index, edge_embeddings)
+        return aggr_out  # [V, emb_size]
+
+
+class GraphSoftCounter(nn.Module):
+    def __init__(
+        self,
+        hops: int,
+        num_nodetypes: int,
+        num_edgetypes: int,
+        gsc_hidden_size: int,
+        sent_scorer: nn.Module,  # [batch_size, lm_emb] -> [batch_size, 1]
+    ):
+        super().__init__()
+        self.message_passing = GSC_Message_Passing(
+            hops, num_nodetypes, num_edgetypes, gsc_hidden_size)
+        self.sent_scorer = sent_scorer
+
+    def forward(self, graphs: Batch, lm_context: torch.Tensor):
+        ctx_nodes_idx = graphs.ptr[:-1]
+        graph_emb = self.message_passing(
+            graphs)[ctx_nodes_idx]  # [batch_size, 1]
+        return graph_emb
+
+
+class LM_GSC(nn.Module):
+    def __init__(
+        self,
+        hops: int,
+        num_nodetypes: int,
+        num_edgetypes: int,
+        gsc_hidden_size: int,
+
+        lm: BertModel,
+    ):
+        super().__init__()
+        node_emb_size = 1
+
+        self.gnn = GSC_Message_Passing(
+            hops, num_nodetypes, num_edgetypes, gsc_hidden_size, node_emb_size)
+        self.ctx_scorer = nn.Linear(lm.config.hidden_size, 1)
+        self.graph_scorer = MLP(input_size=node_emb_size,
+                                hidden_size=32,
+                                output_size=1,
+                                num_layers=1,
+                                dropout_rate=0.2)
+
+    def forward(self, graphs: Batch, lm_context):
+        ctx_nodes_idx = graphs.ptr[:-1]
+        graph_emb = self.gnn(graphs)[ctx_nodes_idx]  # [batch, node_emb]
+        context_score = self.ctx_scorer(lm_context)
+        graph_score = self.graph_scorer(graph_emb)
+        qa_score = context_score + graph_score
+        return qa_score
