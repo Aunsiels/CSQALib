@@ -5,6 +5,7 @@ from .ascent import load_ascent
 from .cpnet import load_cpnet
 from .csqa import load_csqa
 from .obqa import load_obqa
+from .fake import load_fake_kb, load_fake_qa
 
 from src.concept_embedder import Embedder, LM_Embedder, GloVe_Embedder
 

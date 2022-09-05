@@ -3,10 +3,6 @@ import pandas as pd
 import networkx as nx
 from tqdm import tqdm
 
-from loaders.common import DF_EDGES_COLS, DF_RELS_COLS
-
-GRAPH_EDGE_ATTR = ["Rel", "Weight"]
-
 NODES_BLACKLIST = {"uk", "us", "take", "make", "object", "person", "people"}
 
 
@@ -30,28 +26,27 @@ def get_fwd_bwd(row, relmap):
     yield bwd, row.Tail, row.Head, row.Weight
 
 
-def build_graph_with_relation_idx(edges: pd.DataFrame, relations: pd.DataFrame) -> Tuple[nx.MultiDiGraph, List[str]]:
+def build_graph(edges: pd.DataFrame, relations: pd.DataFrame, use_idx: bool) -> Tuple[nx.MultiDiGraph, List[str]]:
     relmap = build_relmap(relations)
     rel_idx = {}
 
     graph = nx.MultiDiGraph()
-    for row in tqdm(edges.itertuples(), desc="build graph", total=len(edges)):
+    edges2 = []
+    for row in edges:
         if row.Type in relmap and row.Head not in NODES_BLACKLIST and row.Tail not in NODES_BLACKLIST:
             for Rel, head, tail, Weight in get_fwd_bwd(row, relmap):
-                if Rel not in rel_idx:
-                    rel_idx[Rel] = len(rel_idx)
-                graph.add_edge(head, tail, Rel=rel_idx[Rel], Weight=Weight)
+                edges2.append((Rel, head, tail, Weight))
+
+    edges2 = list(set(edges2))  # unique
+    if use_idx:
+        edges3 = []
+        for Rel, head, tail, Weight in edges2:
+            if Rel not in rel_idx:
+                rel_idx[Rel] = len(rel_idx)
+            edges3.append((rel_idx[Rel], head, tail, Weight))
+        edges2 = edges3
+
+    for Rel, head, tail, Weight in edges2:
+        graph.add_edge(head, tail, Rel=Rel, Weight=Weight)
 
     return graph, list(rel_idx)
-
-
-def build_graph(edges: pd.DataFrame, relations: pd.DataFrame) -> nx.MultiDiGraph:
-    relmap = build_relmap(relations)
-
-    graph = nx.MultiDiGraph()
-    for row in tqdm(edges.itertuples(), desc="build graph", total=len(edges)):
-        if row.Type in relmap and row.Head not in NODES_BLACKLIST and row.Tail not in NODES_BLACKLIST:
-            for Rel, head, tail, Weight in get_fwd_bwd(row, relmap):
-                graph.add_edge(head, tail, Rel=Rel, Weight=Weight)
-
-    return graph
