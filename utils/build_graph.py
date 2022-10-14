@@ -1,7 +1,6 @@
 from typing import List, Tuple
 import pandas as pd
 import networkx as nx
-from tqdm import tqdm
 
 NODES_BLACKLIST = {"uk", "us", "take", "make", "object", "person", "people"}
 
@@ -32,7 +31,7 @@ def build_graph(edges: pd.DataFrame, relations: pd.DataFrame, use_idx: bool) -> 
 
     graph = nx.MultiDiGraph()
     edges2 = []
-    for row in edges:
+    for _, row in edges.iterrows():
         if row.Type in relmap and row.Head not in NODES_BLACKLIST and row.Tail not in NODES_BLACKLIST:
             for Rel, head, tail, Weight in get_fwd_bwd(row, relmap):
                 edges2.append((Rel, head, tail, Weight))
@@ -50,3 +49,7 @@ def build_graph(edges: pd.DataFrame, relations: pd.DataFrame, use_idx: bool) -> 
         graph.add_edge(head, tail, Rel=Rel, Weight=Weight)
 
     return graph, list(rel_idx)
+
+
+def build_graph_with_relation_idx(edges: pd.DataFrame, relations: pd.DataFrame):
+    return build_graph(edges, relations, True)

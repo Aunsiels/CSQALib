@@ -3,9 +3,10 @@ import networkx as nx
 import torch
 from torch_geometric.data.data import Data
 
-from .concept_embedder import Embedder
-from .matcher import Matcher
-from .ranker import Ranker, get_top_k
+
+from utils.concept_embedder import Embedder
+from utils.matcher import Matcher
+from utils.ranker import CosineSimilarityRanker, get_top_k
 
 
 def get_2_hops_subgraph(graph: nx.MultiDiGraph, src, dst) -> nx.MultiDiGraph:
@@ -15,7 +16,8 @@ def get_2_hops_subgraph(graph: nx.MultiDiGraph, src, dst) -> nx.MultiDiGraph:
     return graph.subgraph(list(nodes))
 
 
-def extract_graph(question: str, answer: str, matcher: Matcher, graph: nx.MultiDiGraph, ranker: Ranker, embedder: Embedder, top_k):
+def extract_graph(question: str, answer: str, matcher: Matcher, graph: nx.MultiDiGraph,
+                  ranker: CosineSimilarityRanker, embedder: Embedder, top_k):
     qcids = matcher.match_one(question)
     acids = matcher.match_one(answer)
     qcids -= acids

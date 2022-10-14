@@ -1,5 +1,5 @@
 import pandas as pd
-from src.build_graph import build_graph
+from utils.build_graph import build_graph
 
 
 def test_graph():

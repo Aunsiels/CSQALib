@@ -4,9 +4,8 @@ from torch import nn
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.data import Data, Batch
 from .mlp import MLP
-from src.tensor_utils import make_one_hot
+from utils.tensor_utils import make_one_hot
 
-from transformers.modeling_outputs import BaseModelOutputWithPoolingAndCrossAttentions
 from transformers import BertModel
 
 
@@ -23,23 +22,23 @@ class GSCLayer(MessagePassing):
         return x_j + edge_attr
 
 
-class GSC_Message_Passing(nn.Module):
+class GSCMessagePassing(nn.Module):
     def __init__(
         self,
         hops: int,
-        num_nodetypes: int,
-        num_edgetypes: int,
+        num_node_types: int,
+        num_edge_types: int,
         hidden_size: int,
         emb_size: int = 1,
     ):
         super().__init__()
-        self.num_nodetypes = num_nodetypes
-        self.num_edgetypes = num_edgetypes
+        self.num_nodetypes = num_node_types
+        self.num_edgetypes = num_edge_types
         self.hidden_size = hidden_size
         self.emb_size = emb_size
 
         self.edge_encoder = nn.Sequential(
-            MLP(input_size=num_edgetypes + num_nodetypes * 2,
+            MLP(input_size=num_edge_types + num_node_types * 2,
                 hidden_size=hidden_size,
                 output_size=emb_size,
                 num_layers=1,
@@ -55,8 +54,9 @@ class GSC_Message_Passing(nn.Module):
         node_type: torch.LongTensor,
     ):
         # Prepare edge feature
+        print(edge_type, self.num_edgetypes)
         edge_vec = make_one_hot(edge_type, self.num_edgetypes)  # [E, 39]
-        head_type = node_type[edge_index[0]]  # [E,] #head=src
+        head_type = node_type[edge_index[0]]  # [E,] #head=utils
         tail_type = node_type[edge_index[1]]  # [E,] #tail=tgt
         head_vec = make_one_hot(head_type, self.num_nodetypes)  # [E,4]
         tail_vec = make_one_hot(tail_type, self.num_nodetypes)  # [E,4]
@@ -83,29 +83,27 @@ class GraphSoftCounter(nn.Module):
     def __init__(
         self,
         hops: int,
-        num_nodetypes: int,
-        num_edgetypes: int,
-        gsc_hidden_size: int,
-        sent_scorer: nn.Module,  # [batch_size, lm_emb] -> [batch_size, 1]
+        num_node_types: int,
+        num_edge_types: int,
+        hidden_size: int,
     ):
         super().__init__()
-        self.message_passing = GSC_Message_Passing(
-            hops, num_nodetypes, num_edgetypes, gsc_hidden_size)
-        self.sent_scorer = sent_scorer
+        self.hidden_size = hidden_size
+        self.message_passing = GSCMessagePassing(
+            hops, num_node_types, num_edge_types, hidden_size)
 
     def forward(self, graphs: Batch, lm_context: torch.Tensor):
         ctx_nodes_idx = graphs.ptr[:-1]
-        graph_emb = self.message_passing(
-            graphs)[ctx_nodes_idx]  # [batch_size, 1]
+        graph_emb = self.message_passing(graphs)[ctx_nodes_idx]  # [batch_size, 1]
         return graph_emb
 
 
-class LM_GSC(nn.Module):
+class LMGSC(nn.Module):
     def __init__(
         self,
         hops: int,
-        num_nodetypes: int,
-        num_edgetypes: int,
+        num_node_types: int,
+        num_edge_types: int,
         gsc_hidden_size: int,
 
         lm: BertModel,
@@ -113,8 +111,8 @@ class LM_GSC(nn.Module):
         super().__init__()
         node_emb_size = 1
 
-        self.gnn = GSC_Message_Passing(
-            hops, num_nodetypes, num_edgetypes, gsc_hidden_size, node_emb_size)
+        self.gnn = GSCMessagePassing(
+            hops, num_node_types, num_edge_types, gsc_hidden_size, node_emb_size)
         self.ctx_scorer = nn.Linear(lm.config.hidden_size, 1)
         self.graph_scorer = MLP(input_size=node_emb_size,
                                 hidden_size=32,

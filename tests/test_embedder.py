@@ -1,4 +1,4 @@
-from src.concept_embedder import LM_Embedder
+from utils.concept_embedder import LM_Embedder
 
 
 def test_lm_embedder():

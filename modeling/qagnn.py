@@ -44,20 +44,20 @@ class QAGNN(nn.Module):
     def __init__(
         self,
         lm_dim,
-        hid_dim,
+        hidden_size,
         num_rels,
         num_hops,
     ):
         super().__init__()
         self.lm_dim = lm_dim
-        self.hid_dim = hid_dim
+        self.hidden_size = hidden_size
         self.num_rels = num_rels
         self.num_hops = num_hops
 
-        self.embed_lm = nn.Linear(lm_dim, hid_dim)
-        self.relev_emb = nn.Bilinear(lm_dim, hid_dim, hid_dim)
-        self.edge_emb = nn.Embedding(num_rels + 4, hid_dim)
-        self.gats = nn.ModuleList([gnn.GATConv(hid_dim, hid_dim, edge_dim=hid_dim) for _ in range(num_hops)])
+        self.embed_lm = nn.Linear(lm_dim, hidden_size)
+        self.relev_emb = nn.Bilinear(lm_dim, hidden_size, hidden_size)
+        self.edge_emb = nn.Embedding(num_rels + 4, hidden_size)
+        self.gats = nn.ModuleList([gnn.GATConv(hidden_size, hidden_size, edge_dim=hidden_size) for _ in range(num_hops)])
 
     def forward(
         self,

@@ -48,6 +48,7 @@ class Matcher:
                                     'ner', 'parser', 'textcat'])
         nlp.add_pipe('sentencizer')
         self.matcher = matcher = PhraseMatcher(nlp.vocab, "LEMMA")
+        print(concept_ids)
         concept_spans = [cid.replace('_', ' ') for cid in concept_ids]
 
         for cid, doc in tqdm(zip(concept_ids, nlp.pipe(concept_spans)), desc="matcher", total=len(concept_ids)):
@@ -59,5 +60,5 @@ class Matcher:
         return {self.nlp.vocab[cid].text for cid, _, _ in self.matcher(doc)}
 
     def match_all(self, corpus: List[str]) -> List[set]:
-        [{self.nlp.vocab[cid].text for cid, _, _ in self.matcher(doc)}
-         for doc in self.nlp.pipe(corpus)]
+        return [{self.nlp.vocab[cid].text for cid, _, _ in self.matcher(doc)}
+                for doc in self.nlp.pipe(corpus)]

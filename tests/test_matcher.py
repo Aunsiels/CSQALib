@@ -1,4 +1,4 @@
-from src.matcher import Matcher
+from utils.matcher import Matcher
 
 
 def test_matcher():

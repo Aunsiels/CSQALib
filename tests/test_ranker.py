@@ -1,4 +1,4 @@
-from src.ranker import Ranker
+from utils.ranker import Ranker
 
 def test_ranker():
     context = "I am eating soup"
