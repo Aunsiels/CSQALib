@@ -22,7 +22,7 @@ class EmptyGnn(nn.Module):
         self.hidden_size = 0
 
     def forward(self, graphs: Graphs, lm_context: torch.Tensor):
-        return torch.Tensor(size=(lm_context.shape[0], 0), device=lm_context.device)
+        return torch.Tensor(size=(lm_context.shape[0], 0)).to(lm_context.device)
 
 
 class LM_GNN(nn.Module):
