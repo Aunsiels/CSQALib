@@ -92,7 +92,8 @@ def load_dataset():
 
 
 def train():
-    key_cache = (ARGS.kb_type, ARGS.kb_path, ARGS.node_embeddings, ARGS.train_file, ARGS.test_file, ARGS.top_k)
+    key_cache = (ARGS.kb_type, ARGS.rel_path, ARGS.kb_path, ARGS.node_embeddings,
+                 ARGS.train_file, ARGS.test_file, ARGS.top_k)
     num_choices, num_rels, embed_dim, train_dataset, test_dataset = get_cached(key_cache)
 
     tokenizer = AutoTokenizer.from_pretrained(ARGS.lm)
@@ -120,6 +121,7 @@ def train():
         project=ARGS.wandb_project,
         config=dict(
             kb_name=ARGS.kb_path,
+            rel_path=ARGS.rel_path,
             emb_name=ARGS.node_embeddings,
             qa_task=ARGS.train_file,
             lm_name=ARGS.lm,
@@ -131,6 +133,9 @@ def train():
             num_hops=ARGS.hops,
         ),
     )
+
+    best_acc = -1
+    no_improvement = 0
 
     for epoch in range(ARGS.epochs):
         wandb.log({"epoch": epoch})
@@ -154,8 +159,15 @@ def train():
                 logits = model(text, graph)
                 answer = logits.view(-1, 5).argmax(1)
                 correct += (answer == labels).sum().item()
-            wandb.log({"validation/accuracy": correct /
-                      len(test_dataloader.dataset)})
+            accuracy = correct / len(test_dataloader.dataset)
+            if accuracy > best_acc:
+                best_acc = accuracy
+                no_improvement = 0
+            else:
+                no_improvement += 1
+            wandb.log({"validation/accuracy": accuracy})
+            if no_improvement > ARGS.max_no_improvement:
+                break
 
 
 if __name__ == "__main__":

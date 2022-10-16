@@ -44,5 +44,9 @@ parser.add_argument("--hops", default=3, type=int, required=False,
 parser.add_argument("--wandb_project", default="csqa", type=str, required=False,
                     help="The name of the project in WANDB.")
 
+parser.add_argument("--max_no_improvement", default=10, type=int, required=False,
+                    help="The maximum of times the validation accuracy can show no improvement before stopping the "
+                         "training")
+
 
 ARGS = parser.parse_args()
