@@ -29,11 +29,10 @@ def extract_graph(question: str, answer: str, matcher: Matcher, graph: nx.MultiD
     scores = ranker(question, cids1) + 2 * np.array(boost)
 
     cids2 = get_top_k(cids1, scores, top_k)
+    if not cids2:
+        cids2 = [""]
     subgraph2 = subgraph1.subgraph(cids2)
-    if cids2:
-        embeddings = embedder(cids2)
-    else:
-        embeddings = embedder(["Nothing"])
+    embeddings = embedder(cids2)
     return as_data(cids2, subgraph2, qcids, acids, embeddings)
 
 

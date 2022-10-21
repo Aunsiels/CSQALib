@@ -47,9 +47,7 @@ class LM_GNN(nn.Module):
     def forward(self, tokens: Dict[str, torch.Tensor], graphs: Graphs) -> torch.Tensor:
         # https://github.com/huggingface/transformers/blob/b487096b02307cd6e0f132b676cdcc7255fe8e74/src/transformers/models/roberta/modeling_roberta.py#L1262
         # RobertaForMultipleChoice: pooler_output > dropout > linear
-        output: BaseModelOutputWithPoolingAndCrossAttentions = self.lm(
-            **tokens)
-
+        output: BaseModelOutputWithPoolingAndCrossAttentions = self.lm(**tokens)
         lm_context = output.pooler_output
         graph_context = self.gnn(graphs, lm_context)
         return self.clf(torch.cat((lm_context, graph_context), 1))
